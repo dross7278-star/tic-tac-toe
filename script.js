@@ -1,82 +1,123 @@
 const title = document.querySelector(".board__title");
-const allSquares = document.querySelectorAll(".board__square");
+const allSquares = [...document.querySelectorAll(".board__square")];
+const restartRoundButton = document.querySelector("#restart-round");
+const resetScoreButton = document.querySelector("#reset-score");
+const scoreX = document.querySelector("#score-x");
+const scoreO = document.querySelector("#score-o");
+const scoreDraw = document.querySelector("#score-draw");
 
-let currentPlayer = 'X';
+const WIN_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+];
+
+let currentPlayer = "X";
 let gameOver = false;
-let board = new Array(9);
+let board = Array(9).fill("");
+let scores = {
+  X: 0,
+  O: 0,
+  draw: 0,
+};
 
-allSquares.forEach((square, i) => {
-  square.addEventListener("click", () => {
-    if (square.innerHTML || gameOver) {
-      // Invalid click 
-      return;
-    }
-
-    board[i] = currentPlayer;
-    square.innerHTML = currentPlayer;
-
-    if (checkWin()) {
-      title.innerHTML = `${currentPlayer} Won The Game!`;
-      return (gameOver = true);
-    }
-
-    if (checkTie()) {
-      title.innerHTML = `Draw!`;
-      return (gameOver = true);
-    }
-
-    switchPlayers();
-    title.innerHTML = `${currentPlayer}'s Turn`;
-  });
+allSquares.forEach((square) => {
+  square.addEventListener("click", () => handleSquareClick(square));
 });
 
-function checkWin() {
-  const winningIndicies = [
-    // Horizontal wins
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    // Vertical wins
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    // Diagonal wins
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
+restartRoundButton.addEventListener("click", () => resetRound(true));
+resetScoreButton.addEventListener("click", resetScoreboard);
 
-  for (let i = 0; i < winningIndicies.length; ++i) {
-    const matchingIndicies = winningIndicies[i];
-    const symbol1 = board[matchingIndicies[0]];
-    const symbol2 = board[matchingIndicies[1]];
-    const symbol3 = board[matchingIndicies[2]];
-    if (!symbol1 || !symbol2 || !symbol3) {
-      continue;
-    }
-    if (symbol1 === symbol2 && symbol2 === symbol3) {
-      return true;
-    }
+updateTitle();
+updateScoreboard();
+
+function handleSquareClick(square) {
+  const index = Number(square.dataset.index);
+  if (gameOver || board[index]) {
+    return;
   }
+
+  board[index] = currentPlayer;
+  square.textContent = currentPlayer;
+  square.classList.add(currentPlayer === "X" ? "is-x" : "is-o");
+  square.setAttribute("aria-label", `Cell ${index + 1}, ${currentPlayer}`);
+
+  const winningLine = getWinningLine();
+  if (winningLine) {
+    gameOver = true;
+    scores[currentPlayer] += 1;
+    markWinningLine(winningLine);
+    title.textContent = `${currentPlayer} wins this round!`;
+    updateScoreboard();
+    return;
+  }
+
+  if (isTie()) {
+    gameOver = true;
+    scores.draw += 1;
+    title.textContent = "It's a draw!";
+    updateScoreboard();
+    return;
+  }
+
+  currentPlayer = currentPlayer === "X" ? "O" : "X";
+  updateTitle();
 }
 
-function checkTie() {
-  for (let i = 0; i < board.length; ++i) {
-    if (board[i] === undefined) {
-      return false
+function getWinningLine() {
+  for (const [a, b, c] of WIN_LINES) {
+    if (board[a] && board[a] === board[b] && board[b] === board[c]) {
+      return [a, b, c];
     }
   }
-  return true
+  return null;
 }
 
-function restartGame() {
+function isTie() {
+  return board.every((cell) => cell !== "");
+}
+
+function markWinningLine(line) {
+  line.forEach((index) => allSquares[index].classList.add("is-win"));
+}
+
+function updateTitle() {
+  title.textContent = `${currentPlayer}'s Turn`;
+}
+
+function updateScoreboard() {
+  scoreX.textContent = String(scores.X);
+  scoreO.textContent = String(scores.O);
+  scoreDraw.textContent = String(scores.draw);
+}
+
+function resetRound(resetToX) {
+  board = Array(9).fill("");
   gameOver = false;
-  board = new Array(9);
-  allSquares.forEach((square) => {
-    square.innerHTML = "";
-    title.innerHTML = `${currentPlayer}'s turn`;
+  if (resetToX) {
+    currentPlayer = "X";
+  }
+
+  allSquares.forEach((square, index) => {
+    square.textContent = "";
+    square.classList.remove("is-x", "is-o", "is-win");
+    square.setAttribute("aria-label", `Cell ${index + 1}`);
   });
+
+  updateTitle();
 }
 
-function switchPlayers() {
-  currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+function resetScoreboard() {
+  scores = {
+    X: 0,
+    O: 0,
+    draw: 0,
+  };
+  resetRound(true);
+  updateScoreboard();
 }
